@@ -1,0 +1,6 @@
+
+[paths]
+default = ssh://git@github.com/lXXXw/close-duplicate-tabs.git
+
+[remotenames]
+publicheads = m/*,remote/main,remote/master
