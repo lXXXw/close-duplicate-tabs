@@ -1,0 +1,13 @@
+{
+  "name": "close-duplicate-tabs",
+  "version": "1.0.0",
+  "description": "Chrome extension to close duplicate tabs with keyboard shortcut support",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "pnpm -r test",
+    "test:unit": "pnpm --filter tests test:unit",
+    "test:e2e": "pnpm --filter tests test:e2e"
+  },
+  "devDependencies": {}
+}

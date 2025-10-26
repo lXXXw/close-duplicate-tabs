@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Close Duplicate Tabs",
+  "version": "1.0.0",
+  "description": "Close duplicate tabs with a keyboard shortcut",
+  "permissions": ["tabs", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Close Duplicate Tabs"
+  },
+  "commands": {
+    "close-duplicates-default": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Close duplicate tabs (keeps only newest per URL)"
+    }
+  },
+  "icons": {
+    "128": "icons/icon-128.png"
+  }
+}

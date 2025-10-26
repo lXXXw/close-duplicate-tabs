@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Close Duplicate Tabs</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Close Duplicate Tabs</h1>
+
+    <div class="section">
+      <h2>Predefined Rules</h2>
+      <div id="predefinedRulesContainer" class="rules-container">
+        <button class="rule-btn" data-rule="ignore-params">
+          Close Duplicates (Ignore Params)
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Custom Rules</h2>
+      <div id="customRulesContainer" class="rules-container"></div>
+      <button id="addRuleBtn" class="btn-primary">+ Add Custom Rule</button>
+    </div>
+
+    <div class="section" id="reopenSection" style="display: none;">
+      <button id="reopenBtn" class="btn-secondary">Reopen Last Closed</button>
+      <span id="closedCount" class="closed-count"></span>
+    </div>
+
+    <div class="section">
+      <p class="hint">Keyboard shortcut: <code>Ctrl+Shift+X</code> (Mac: <code>Cmd+Shift+X</code>)</p>
+    </div>
+  </div>
+
+  <!-- Modal for adding new rule -->
+  <div id="addRuleModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Add Custom Rule</h2>
+      <form id="addRuleForm">
+        <label>
+          Rule Name:
+          <input type="text" id="ruleName" placeholder="e.g., GitHub Issues" required>
+        </label>
+        <label>
+          Regex Pattern:
+          <input type="text" id="ruleRegex" placeholder="e.g., https://github\.com/.*/issues/.*" required>
+        </label>
+        <button type="submit" class="btn-primary">Add Rule</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
