@@ -22,62 +22,6 @@ function sendToBackground(message) {
 }
 
 /**
- * Load and display custom rules
- */
-async function loadCustomRules() {
-  const data = await chrome.storage.sync.get(['rules']);
-  const rules = data.rules || [];
-
-  customRulesContainer.innerHTML = '';
-
-  if (rules.length === 0) {
-    customRulesContainer.innerHTML = '<p style="color: #999; font-size: 12px;">No custom rules yet</p>';
-    return;
-  }
-
-  rules.forEach((rule) => {
-    const ruleBtn = document.createElement('button');
-    ruleBtn.className = 'rule-btn custom';
-    ruleBtn.textContent = rule.name;
-    ruleBtn.type = 'button';
-
-    // Add delete functionality on right-click or via a delete button
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.textContent = '×';
-    deleteBtn.style.cssText = `
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: red;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 0;
-      width: 20px;
-      height: 20px;
-    `;
-
-    ruleBtn.style.position = 'relative';
-    ruleBtn.appendChild(deleteBtn);
-
-    deleteBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      deleteRule(rule.id);
-    });
-
-    ruleBtn.addEventListener('click', () => {
-      executeRule(rule);
-    });
-
-    customRulesContainer.appendChild(ruleBtn);
-  });
-}
-
-/**
  * Delete a custom rule
  */
 async function deleteRule(ruleId) {
@@ -86,7 +30,7 @@ async function deleteRule(ruleId) {
   const data = await chrome.storage.sync.get(['rules']);
   const rules = (data.rules || []).filter((r) => r.id !== ruleId);
   await chrome.storage.sync.set({ rules });
-  loadCustomRules();
+  loadPopupData();
 }
 
 /**
@@ -104,21 +48,6 @@ function handlePredefinedRuleClick(ruleType) {
   if (ruleType === 'ignore-params') {
     // The utility functions handle this
     sendToBackground({ action: 'executeCloseDuplicates' });
-  }
-}
-
-/**
- * Update the reopen button visibility and closed count
- */
-async function updateReopenButton() {
-  const data = await chrome.storage.local.get(['closedTabsCount']);
-  const count = data.closedTabsCount || 0;
-
-  if (count > 0) {
-    reopenSection.style.display = 'block';
-    closedCountSpan.textContent = `(${count} tab${count > 1 ? 's' : ''} closed)`;
-  } else {
-    reopenSection.style.display = 'none';
   }
 }
 
@@ -191,6 +120,77 @@ function initModal() {
 }
 
 /**
+ * Load all popup data in parallel
+ */
+async function loadPopupData() {
+  // Reason: Fetch both storage calls in parallel for faster popup display
+  const [syncData, localData] = await Promise.all([
+    chrome.storage.sync.get(['rules']),
+    chrome.storage.local.get(['closedTabsCount']),
+  ]);
+
+  // Update UI with fetched data
+  const rules = syncData.rules || [];
+  const count = localData.closedTabsCount || 0;
+
+  // Render custom rules
+  customRulesContainer.innerHTML = '';
+  if (rules.length === 0) {
+    customRulesContainer.innerHTML = '<p style="color: #999; font-size: 12px;">No custom rules yet</p>';
+  } else {
+    const fragment = document.createDocumentFragment();
+    rules.forEach((rule) => {
+      const ruleBtn = document.createElement('button');
+      ruleBtn.className = 'rule-btn custom';
+      ruleBtn.textContent = rule.name;
+      ruleBtn.type = 'button';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = '×';
+      deleteBtn.style.cssText = `
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: red;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+      `;
+
+      ruleBtn.style.position = 'relative';
+      ruleBtn.appendChild(deleteBtn);
+
+      deleteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteRule(rule.id);
+      });
+
+      ruleBtn.addEventListener('click', () => {
+        executeRule(rule);
+      });
+
+      fragment.appendChild(ruleBtn);
+    });
+    customRulesContainer.appendChild(fragment);
+  }
+
+  // Update reopen button
+  if (count > 0) {
+    reopenSection.style.display = 'block';
+    closedCountSpan.textContent = `(${count} tab${count > 1 ? 's' : ''} closed)`;
+  } else {
+    reopenSection.style.display = 'none';
+  }
+}
+
+/**
  * Initialize all listeners and load data
  */
 function init() {
@@ -208,12 +208,13 @@ function init() {
   // Initialize modal
   initModal();
 
-  // Load custom rules and update reopen button
-  loadCustomRules();
-  updateReopenButton();
+  // Load all data in parallel
+  loadPopupData();
 
   // Reason: Refresh reopen button when popup is opened/focused
-  window.addEventListener('focus', updateReopenButton);
+  window.addEventListener('focus', () => {
+    loadPopupData();
+  });
 }
 
 // Initialize on page load
