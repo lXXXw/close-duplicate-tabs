@@ -135,12 +135,12 @@ describe('Custom Rule Matching', () => {
 
   /**
    * Determine which tabs to close for a custom rule
-   * Keeps active tab if it matches, otherwise keeps newest
+   * Keeps only the active tab if it matches the pattern
    */
   function findTabsToCloseForCustomRule(tabs, regexPattern, currentTabId) {
     const matchingTabs = matchTabsAgainstRegex(tabs, regexPattern);
 
-    if (matchingTabs.length <= 1) {
+    if (matchingTabs.length === 0) {
       return [];
     }
 
@@ -148,12 +148,11 @@ describe('Custom Rule Matching', () => {
     const isActiveTabInMatches = matchingTabs.some(tab => tab.id === currentTabId);
 
     matchingTabs.forEach(tab => {
+      // Only keep the active tab if it's in the matching set
       if (tab.id === currentTabId && isActiveTabInMatches) {
         return;
       }
-      if (!isActiveTabInMatches && tab.id === matchingTabs[matchingTabs.length - 1].id) {
-        return;
-      }
+      // Close all other matching tabs
       tabsToClose.push(tab.id);
     });
 
@@ -194,7 +193,7 @@ describe('Custom Rule Matching', () => {
     expect(toClose).toContain(3);
   });
 
-  it('closes matching tabs except newest, when active tab does not match', () => {
+  it('closes all matching tabs when active tab does not match', () => {
     const tabs = [
       { id: 1, url: 'https://github.com/user/repo1' },
       { id: 2, url: 'https://github.com/user/repo2' },
@@ -203,17 +202,27 @@ describe('Custom Rule Matching', () => {
     const pattern = 'github\\.com';
     const toClose = findTabsToCloseForCustomRule(tabs, pattern, 3); // Tab 3 is active but doesn't match
     expect(toClose).toContain(1);
-    expect(toClose).not.toContain(2); // Keep newest matching
+    expect(toClose).toContain(2); // Close all matching tabs since active tab doesn't match
     expect(toClose).not.toContain(3); // Active tab never closed
   });
 
-  it('returns empty array when less than 2 tabs match', () => {
+  it('closes single matching tab if it is not the active tab', () => {
     const tabs = [
       { id: 1, url: 'https://github.com/user/repo' },
       { id: 2, url: 'https://example.com' },
     ];
     const pattern = 'github\\.com';
-    const toClose = findTabsToCloseForCustomRule(tabs, pattern, 999);
+    const toClose = findTabsToCloseForCustomRule(tabs, pattern, 999); // Tab 999 is active (not in list)
+    expect(toClose).toContain(1);
+  });
+
+  it('preserves single matching tab if it is the active tab', () => {
+    const tabs = [
+      { id: 1, url: 'https://github.com/user/repo' },
+      { id: 2, url: 'https://example.com' },
+    ];
+    const pattern = 'github\\.com';
+    const toClose = findTabsToCloseForCustomRule(tabs, pattern, 1); // Tab 1 is active
     expect(toClose.length).toBe(0);
   });
 

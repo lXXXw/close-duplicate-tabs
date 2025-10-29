@@ -172,9 +172,9 @@ async function executeCustomRule(ruleName, ruleRegex) {
 
     console.log(`[CustomRule] Found ${matchingTabs.length} matching tabs`);
 
-    if (matchingTabs.length <= 1) {
-      // Reason: Not enough matching tabs to close
-      console.log(`[CustomRule] Not enough matching tabs to close (need at least 2)`);
+    if (matchingTabs.length === 0) {
+      // Reason: No matching tabs found, nothing to close
+      console.log(`[CustomRule] No matching tabs found`);
       return;
     }
 
@@ -199,6 +199,38 @@ async function executeCustomRule(ruleName, ruleRegex) {
     console.log(`[CustomRule] Rule execution complete`);
   } catch (error) {
     console.error(`[CustomRule] Error executing custom rule "${ruleName}":`, error);
+    throw error;
+  }
+}
+
+/**
+ * Test a custom rule: find which tabs match the regex pattern
+ * @param {string} ruleRegex - Regex pattern to test
+ * @returns {Object} Object with matchingTabIds array
+ */
+async function testCustomRule(ruleRegex) {
+  try {
+    const { tabs } = await getAllTabsAndCurrent();
+    const filteredTabs = filterSpecialUrls(tabs);
+
+    // Compile the regex pattern
+    const pattern = new RegExp(ruleRegex);
+
+    // Find all tabs matching the regex pattern
+    const matchingTabs = filteredTabs.filter(tab => {
+      try {
+        return pattern.test(tab.url);
+      } catch {
+        return false;
+      }
+    });
+
+    return {
+      matchingTabIds: matchingTabs.map(tab => tab.id),
+      matchCount: matchingTabs.length,
+    };
+  } catch (error) {
+    console.error('[TestCustomRule] Error:', error);
     throw error;
   }
 }
@@ -259,6 +291,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
     }).catch((error) => {
       sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  if (request.action === 'testCustomRule') {
+    const { ruleRegex } = request;
+    testCustomRule(ruleRegex).then((result) => {
+      sendResponse(result);
+    }).catch((error) => {
+      sendResponse({ error: error.message });
     });
     return true;
   }

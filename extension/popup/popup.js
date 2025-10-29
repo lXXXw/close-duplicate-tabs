@@ -34,6 +34,37 @@ async function deleteRule(ruleId) {
 }
 
 /**
+ * Edit a custom rule - open modal with current values
+ */
+function editRule(rule) {
+  document.querySelector('.modal-content h2').textContent = 'Edit Custom Rule';
+  document.getElementById('ruleName').value = rule.name;
+  document.getElementById('ruleRegex').value = rule.regex;
+  addRuleModal.setAttribute('data-edit-id', rule.id);
+  addRuleModal.style.display = 'flex';
+}
+
+/**
+ * Test a custom rule - show which tabs would be closed
+ */
+async function testRule(rule) {
+  try {
+    const response = await sendToBackground({
+      action: 'testCustomRule',
+      ruleRegex: rule.regex,
+    });
+
+    if (response.matchingTabIds && response.matchingTabIds.length > 0) {
+      alert(`Found ${response.matchingTabIds.length} matching tabs.\n\nTab IDs: ${response.matchingTabIds.join(', ')}`);
+    } else {
+      alert('No matching tabs found for this rule.');
+    }
+  } catch (error) {
+    alert(`Error testing rule: ${error.message}`);
+  }
+}
+
+/**
  * Execute a custom rule by sending it to the background service worker
  */
 async function executeRule(rule) {
@@ -72,7 +103,7 @@ async function handleReopen() {
 }
 
 /**
- * Handle add rule form submission
+ * Handle add/edit rule form submission
  */
 async function handleAddRule(e) {
   e.preventDefault();
@@ -94,19 +125,32 @@ async function handleAddRule(e) {
   }
 
   const data = await chrome.storage.sync.get(['rules']);
-  const rules = data.rules || [];
+  let rules = data.rules || [];
 
-  const newRule = {
-    id: `custom-${Date.now()}`,
-    name,
-    regex,
-  };
+  const editId = addRuleModal.getAttribute('data-edit-id');
 
-  rules.push(newRule);
+  if (editId) {
+    // Edit mode: update existing rule
+    rules = rules.map((r) =>
+      r.id === editId ? { ...r, name, regex } : r
+    );
+    addRuleModal.removeAttribute('data-edit-id');
+  } else {
+    // Add mode: create new rule
+    const newRule = {
+      id: `custom-${Date.now()}`,
+      name,
+      regex,
+    };
+    rules.push(newRule);
+  }
+
   await chrome.storage.sync.set({ rules });
 
   addRuleForm.reset();
   addRuleModal.style.display = 'none';
+  // Reset modal title for next use
+  document.querySelector('.modal-content h2').textContent = 'Add Custom Rule';
   loadPopupData();
 }
 
@@ -157,32 +201,51 @@ async function loadPopupData() {
       ruleBtn.textContent = rule.name;
       ruleBtn.type = 'button';
 
+      // Test button
+      const testBtn = document.createElement('button');
+      testBtn.className = 'rule-action-btn rule-test-btn';
+      const testImg = document.createElement('img');
+      testImg.src = chrome.runtime.getURL('icons/test.png');
+      testImg.alt = 'Test';
+      testBtn.appendChild(testImg);
+      testBtn.title = 'Test this rule';
+      testBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        testRule(rule);
+      });
+
+      // Edit button
+      const editBtn = document.createElement('button');
+      editBtn.className = 'rule-action-btn rule-edit-btn';
+      const editImg = document.createElement('img');
+      editImg.src = chrome.runtime.getURL('icons/edit.png');
+      editImg.alt = 'Edit';
+      editBtn.appendChild(editImg);
+      editBtn.title = 'Edit this rule';
+      editBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editRule(rule);
+      });
+
+      // Delete button
       const deleteBtn = document.createElement('button');
-      deleteBtn.type = 'button';
-      deleteBtn.textContent = '×';
-      deleteBtn.style.cssText = `
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: none;
-        border: none;
-        color: red;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 0;
-        width: 20px;
-        height: 20px;
-      `;
-
-      ruleBtn.style.position = 'relative';
-      ruleBtn.appendChild(deleteBtn);
-
+      deleteBtn.className = 'rule-action-btn rule-delete-btn';
+      const deleteImg = document.createElement('img');
+      deleteImg.src = chrome.runtime.getURL('icons/delete.png');
+      deleteImg.alt = 'Delete';
+      deleteBtn.appendChild(deleteImg);
+      deleteBtn.title = 'Delete this rule';
       deleteBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         deleteRule(rule.id);
       });
+
+      ruleBtn.appendChild(testBtn);
+      ruleBtn.appendChild(editBtn);
+      ruleBtn.appendChild(deleteBtn);
 
       ruleBtn.addEventListener('click', () => {
         executeRule(rule);

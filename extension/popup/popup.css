@@ -58,15 +58,57 @@ h2 {
   border-color: #999;
 }
 
-.rule-btn.custom:hover::after {
-  content: '×';
+.rule-btn.custom {
+  position: relative;
+}
+
+.rule-action-btn {
   position: absolute;
-  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  color: red;
-  font-size: 16px;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
+  padding: 6px 8px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.rule-action-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: translateY(-50%) scale(1.15);
+}
+
+.rule-action-btn img,
+.rule-action-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  transition: filter 0.2s ease;
+}
+
+.rule-action-btn:hover img,
+.rule-action-btn:hover svg {
+  filter: brightness(1.2);
+}
+
+.rule-btn.custom:hover .rule-action-btn {
+  display: inline-block;
+}
+
+.rule-btn.custom:hover .rule-delete-btn {
+  right: 8px;
+}
+
+.rule-btn.custom:hover .rule-edit-btn {
+  right: 40px;
+}
+
+.rule-btn.custom:hover .rule-test-btn {
+  right: 72px;
 }
 
 .btn-primary,
