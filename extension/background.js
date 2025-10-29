@@ -148,12 +148,17 @@ async function executeCloseDuplicates() {
  * @param {string} ruleRegex - Regex pattern to match URLs
  */
 async function executeCustomRule(ruleName, ruleRegex) {
+  console.log(`[CustomRule] Executing rule "${ruleName}" with pattern: ${ruleRegex}`);
   try {
     const { tabs, currentTabId } = await getAllTabsAndCurrent();
+    console.log(`[CustomRule] Found ${tabs.length} total tabs, active tab ID: ${currentTabId}`);
+
     const filteredTabs = filterSpecialUrls(tabs);
+    console.log(`[CustomRule] ${filteredTabs.length} regular tabs after filtering special URLs`);
 
     // Compile the regex pattern
     const pattern = new RegExp(ruleRegex);
+    console.log(`[CustomRule] Compiled regex pattern`);
 
     // Find all tabs matching the regex pattern
     const matchingTabs = filteredTabs.filter(tab => {
@@ -165,31 +170,36 @@ async function executeCustomRule(ruleName, ruleRegex) {
       }
     });
 
+    console.log(`[CustomRule] Found ${matchingTabs.length} matching tabs`);
+
     if (matchingTabs.length <= 1) {
       // Reason: Not enough matching tabs to close
+      console.log(`[CustomRule] Not enough matching tabs to close (need at least 2)`);
       return;
     }
 
     // Determine tabs to close
-    // Reason: Keep the active tab if it matches, otherwise keep the newest
+    // Reason: For custom rules, only keep the active tab if it matches the pattern
     const tabsToClose = [];
     const isActiveTabInMatches = matchingTabs.some(tab => tab.id === currentTabId);
+    console.log(`[CustomRule] Active tab in matches: ${isActiveTabInMatches}`);
 
     matchingTabs.forEach(tab => {
-      // Keep active tab if it's in the matching set
+      // Only keep the active tab if it's in the matching set
       if (tab.id === currentTabId && isActiveTabInMatches) {
+        console.log(`[CustomRule] Keeping active tab ID ${tab.id}`);
         return;
       }
-      // Keep the newest tab if active tab is not in the matches
-      if (!isActiveTabInMatches && tab.id === matchingTabs[matchingTabs.length - 1].id) {
-        return;
-      }
+      // Close all other matching tabs
       tabsToClose.push(tab.id);
     });
 
+    console.log(`[CustomRule] Will close ${tabsToClose.length} tabs:`, tabsToClose);
     await closeAndStoreTabs(tabsToClose);
+    console.log(`[CustomRule] Rule execution complete`);
   } catch (error) {
-    console.error(`Error executing custom rule "${ruleName}":`, error);
+    console.error(`[CustomRule] Error executing custom rule "${ruleName}":`, error);
+    throw error;
   }
 }
 

@@ -38,14 +38,17 @@ async function deleteRule(ruleId) {
  */
 async function executeRule(rule) {
   try {
-    await sendToBackground({
+    console.log('Executing custom rule:', rule.name, 'Pattern:', rule.regex);
+    const response = await sendToBackground({
       action: 'executeCustomRule',
       ruleName: rule.name,
       ruleRegex: rule.regex,
     });
+    console.log('Custom rule response:', response);
     // Refresh popup data to show updated closed count
-    loadPopupData();
+    await loadPopupData();
   } catch (error) {
+    console.error('Error executing custom rule:', error);
     alert(`Error executing rule "${rule.name}": ${error.message}`);
   }
 }
@@ -104,7 +107,7 @@ async function handleAddRule(e) {
 
   addRuleForm.reset();
   addRuleModal.style.display = 'none';
-  loadCustomRules();
+  loadPopupData();
 }
 
 /**
