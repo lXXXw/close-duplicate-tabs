@@ -34,11 +34,20 @@ async function deleteRule(ruleId) {
 }
 
 /**
- * Execute a rule (currently placeholder for future implementation)
+ * Execute a custom rule by sending it to the background service worker
  */
-function executeRule(rule) {
-  // Placeholder: In future, this can execute custom regex-based rules
-  console.log('Executing rule:', rule);
+async function executeRule(rule) {
+  try {
+    await sendToBackground({
+      action: 'executeCustomRule',
+      ruleName: rule.name,
+      ruleRegex: rule.regex,
+    });
+    // Refresh popup data to show updated closed count
+    loadPopupData();
+  } catch (error) {
+    alert(`Error executing rule "${rule.name}": ${error.message}`);
+  }
 }
 
 /**

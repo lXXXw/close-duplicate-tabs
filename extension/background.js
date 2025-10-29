@@ -143,6 +143,57 @@ async function executeCloseDuplicates() {
 }
 
 /**
+ * Execute a custom rule: find tabs matching regex and close them
+ * @param {string} ruleName - Name of the rule (for logging)
+ * @param {string} ruleRegex - Regex pattern to match URLs
+ */
+async function executeCustomRule(ruleName, ruleRegex) {
+  try {
+    const { tabs, currentTabId } = await getAllTabsAndCurrent();
+    const filteredTabs = filterSpecialUrls(tabs);
+
+    // Compile the regex pattern
+    const pattern = new RegExp(ruleRegex);
+
+    // Find all tabs matching the regex pattern
+    const matchingTabs = filteredTabs.filter(tab => {
+      try {
+        return pattern.test(tab.url);
+      } catch {
+        // If regex fails on a specific URL, skip it
+        return false;
+      }
+    });
+
+    if (matchingTabs.length <= 1) {
+      // Reason: Not enough matching tabs to close
+      return;
+    }
+
+    // Determine tabs to close
+    // Reason: Keep the active tab if it matches, otherwise keep the newest
+    const tabsToClose = [];
+    const isActiveTabInMatches = matchingTabs.some(tab => tab.id === currentTabId);
+
+    matchingTabs.forEach(tab => {
+      // Keep active tab if it's in the matching set
+      if (tab.id === currentTabId && isActiveTabInMatches) {
+        return;
+      }
+      // Keep the newest tab if active tab is not in the matches
+      if (!isActiveTabInMatches && tab.id === matchingTabs[matchingTabs.length - 1].id) {
+        return;
+      }
+      tabsToClose.push(tab.id);
+    });
+
+    await closeAndStoreTabs(tabsToClose);
+  } catch (error) {
+    console.error(`Error executing custom rule "${ruleName}":`, error);
+  }
+}
+
+/**
  * Restore the last closed tabs
  */
 async function restoreLastClosedTabs() {
@@ -188,6 +239,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'executeCloseDuplicates') {
     executeCloseDuplicates().then(() => {
       sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  if (request.action === 'executeCustomRule') {
+    const { ruleName, ruleRegex } = request;
+    executeCustomRule(ruleName, ruleRegex).then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
     });
     return true;
   }

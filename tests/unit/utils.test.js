@@ -119,6 +119,116 @@ describe('filterSpecialUrls', () => {
   });
 });
 
+describe('Custom Rule Matching', () => {
+  /**
+   * Helper function to match tabs against a regex pattern
+   * Used for testing custom rule logic
+   */
+  function matchTabsAgainstRegex(tabs, regexPattern) {
+    try {
+      const pattern = new RegExp(regexPattern);
+      return tabs.filter(tab => pattern.test(tab.url));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Determine which tabs to close for a custom rule
+   * Keeps active tab if it matches, otherwise keeps newest
+   */
+  function findTabsToCloseForCustomRule(tabs, regexPattern, currentTabId) {
+    const matchingTabs = matchTabsAgainstRegex(tabs, regexPattern);
+
+    if (matchingTabs.length <= 1) {
+      return [];
+    }
+
+    const tabsToClose = [];
+    const isActiveTabInMatches = matchingTabs.some(tab => tab.id === currentTabId);
+
+    matchingTabs.forEach(tab => {
+      if (tab.id === currentTabId && isActiveTabInMatches) {
+        return;
+      }
+      if (!isActiveTabInMatches && tab.id === matchingTabs[matchingTabs.length - 1].id) {
+        return;
+      }
+      tabsToClose.push(tab.id);
+    });
+
+    return tabsToClose;
+  }
+
+  it('matches tabs using regex pattern', () => {
+    const tabs = [
+      { id: 1, url: 'https://github.com/user/repo' },
+      { id: 2, url: 'https://github.com/other/repo' },
+      { id: 3, url: 'https://stackoverflow.com/questions/123' },
+    ];
+    const pattern = 'github\\.com';
+    const matched = matchTabsAgainstRegex(tabs, pattern);
+    expect(matched.length).toBe(2);
+    expect(matched[0].id).toBe(1);
+    expect(matched[1].id).toBe(2);
+  });
+
+  it('handles invalid regex gracefully', () => {
+    const tabs = [
+      { id: 1, url: 'https://example.com' },
+    ];
+    const matched = matchTabsAgainstRegex(tabs, '[invalid(regex');
+    expect(matched.length).toBe(0);
+  });
+
+  it('closes non-active matching tabs, keeping the active one', () => {
+    const tabs = [
+      { id: 1, url: 'https://github.com/user/repo1' },
+      { id: 2, url: 'https://github.com/user/repo2' },
+      { id: 3, url: 'https://github.com/user/repo3' },
+    ];
+    const pattern = 'github\\.com';
+    const toClose = findTabsToCloseForCustomRule(tabs, pattern, 2); // Tab 2 is active
+    expect(toClose).not.toContain(2);
+    expect(toClose).toContain(1);
+    expect(toClose).toContain(3);
+  });
+
+  it('closes matching tabs except newest, when active tab does not match', () => {
+    const tabs = [
+      { id: 1, url: 'https://github.com/user/repo1' },
+      { id: 2, url: 'https://github.com/user/repo2' },
+      { id: 3, url: 'https://example.com' },
+    ];
+    const pattern = 'github\\.com';
+    const toClose = findTabsToCloseForCustomRule(tabs, pattern, 3); // Tab 3 is active but doesn't match
+    expect(toClose).toContain(1);
+    expect(toClose).not.toContain(2); // Keep newest matching
+    expect(toClose).not.toContain(3); // Active tab never closed
+  });
+
+  it('returns empty array when less than 2 tabs match', () => {
+    const tabs = [
+      { id: 1, url: 'https://github.com/user/repo' },
+      { id: 2, url: 'https://example.com' },
+    ];
+    const pattern = 'github\\.com';
+    const toClose = findTabsToCloseForCustomRule(tabs, pattern, 999);
+    expect(toClose.length).toBe(0);
+  });
+
+  it('handles complex regex patterns', () => {
+    const tabs = [
+      { id: 1, url: 'https://example.com/search?q=test' },
+      { id: 2, url: 'https://example.com/search?q=another' },
+      { id: 3, url: 'https://example.com/page' },
+    ];
+    const pattern = '/search\\?'; // Match any search URL
+    const matched = matchTabsAgainstRegex(tabs, pattern);
+    expect(matched.length).toBe(2);
+  });
+});
+
 describe('findTabsToClose', () => {
   it('identifies duplicate tabs to close, keeping newest when no active tab in group', () => {
     const tabs = [
