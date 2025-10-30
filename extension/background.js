@@ -254,6 +254,25 @@ async function restoreLastClosedTabs() {
   await chrome.storage.local.remove(['lastClosedTabs', 'closedTabsCount']);
 }
 
+/**
+ * Sync custom rules from sync storage to local storage for faster popup loading
+ * Reason: Local storage is much faster than sync storage, so we cache rules locally
+ * and sync in the background to avoid popup delay
+ */
+async function syncRulesToLocal() {
+  try {
+    const data = await chrome.storage.sync.get(['rules']);
+    const rules = data.rules || [];
+    await chrome.storage.local.set({ cachedRules: rules });
+    console.log('[SyncRules] Synced rules to local storage:', rules.length, 'rules');
+  } catch (error) {
+    console.error('[SyncRules] Error syncing rules:', error);
+  }
+}
+
+// Sync rules on extension startup
+syncRulesToLocal();
+
 // Listen for keyboard shortcut command
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'close-duplicates-default') {
@@ -301,6 +320,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse(result);
     }).catch((error) => {
       sendResponse({ error: error.message });
+    });
+    return true;
+  }
+
+  if (request.action === 'syncRules') {
+    syncRulesToLocal().then(() => {
+      sendResponse({ success: true });
     });
     return true;
   }

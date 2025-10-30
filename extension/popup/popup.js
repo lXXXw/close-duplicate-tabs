@@ -30,6 +30,10 @@ async function deleteRule(ruleId) {
   const data = await chrome.storage.sync.get(['rules']);
   const rules = (data.rules || []).filter((r) => r.id !== ruleId);
   await chrome.storage.sync.set({ rules });
+
+  // Sync the rules to local storage immediately for consistency
+  await chrome.storage.local.set({ cachedRules: rules });
+
   loadPopupData();
 }
 
@@ -147,6 +151,9 @@ async function handleAddRule(e) {
 
   await chrome.storage.sync.set({ rules });
 
+  // Sync the rules to local storage immediately for consistency
+  await chrome.storage.local.set({ cachedRules: rules });
+
   addRuleForm.reset();
   addRuleModal.style.display = 'none';
   // Reset modal title for next use
@@ -176,18 +183,29 @@ function initModal() {
 }
 
 /**
- * Load all popup data in parallel
+ * Load all popup data from local storage (fast) and sync in background
  */
 async function loadPopupData() {
-  // Reason: Fetch both storage calls in parallel for faster popup display
-  const [syncData, localData] = await Promise.all([
-    chrome.storage.sync.get(['rules']),
-    chrome.storage.local.get(['closedTabsCount']),
-  ]);
+  // Reason: Load from local storage immediately for fast popup display
+  // Then trigger background sync to keep cached rules up-to-date
+  const localData = await chrome.storage.local.get(['cachedRules', 'closedTabsCount']);
 
-  // Update UI with fetched data
-  const rules = syncData.rules || [];
+  const rules = localData.cachedRules || [];
   const count = localData.closedTabsCount || 0;
+
+  // Render UI with cached data immediately
+  renderRules(rules, count);
+
+  // Trigger background sync in the background (doesn't block UI)
+  sendToBackground({ action: 'syncRules' }).catch((error) => {
+    console.error('Error syncing rules in background:', error);
+  });
+}
+
+/**
+ * Render rules and reopen button to the UI
+ */
+function renderRules(rules, count) {
 
   // Render custom rules
   customRulesContainer.innerHTML = '';
@@ -204,10 +222,6 @@ async function loadPopupData() {
       // Test button
       const testBtn = document.createElement('button');
       testBtn.className = 'rule-action-btn rule-test-btn';
-      const testImg = document.createElement('img');
-      testImg.src = chrome.runtime.getURL('icons/test.png');
-      testImg.alt = 'Test';
-      testBtn.appendChild(testImg);
       testBtn.title = 'Test this rule';
       testBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -218,10 +232,6 @@ async function loadPopupData() {
       // Edit button
       const editBtn = document.createElement('button');
       editBtn.className = 'rule-action-btn rule-edit-btn';
-      const editImg = document.createElement('img');
-      editImg.src = chrome.runtime.getURL('icons/edit.png');
-      editImg.alt = 'Edit';
-      editBtn.appendChild(editImg);
       editBtn.title = 'Edit this rule';
       editBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -232,10 +242,6 @@ async function loadPopupData() {
       // Delete button
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'rule-action-btn rule-delete-btn';
-      const deleteImg = document.createElement('img');
-      deleteImg.src = chrome.runtime.getURL('icons/delete.png');
-      deleteImg.alt = 'Delete';
-      deleteBtn.appendChild(deleteImg);
       deleteBtn.title = 'Delete this rule';
       deleteBtn.addEventListener('click', (e) => {
         e.preventDefault();

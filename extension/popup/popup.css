@@ -82,17 +82,33 @@ h2 {
   transform: translateY(-50%) scale(1.15);
 }
 
-.rule-action-btn img,
-.rule-action-btn svg {
+.rule-action-btn::before {
+  content: '';
   width: 16px;
   height: 16px;
   display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: brightness(0.8);
   transition: filter 0.2s ease;
 }
 
-.rule-action-btn:hover img,
-.rule-action-btn:hover svg {
+.rule-action-btn:hover::before {
   filter: brightness(1.2);
+}
+
+/* Icon references using URL paths */
+.rule-test-btn::before {
+  background-image: url('/icons/test.png');
+}
+
+.rule-edit-btn::before {
+  background-image: url('/icons/edit.png');
+}
+
+.rule-delete-btn::before {
+  background-image: url('/icons/delete.png');
 }
 
 .rule-btn.custom:hover .rule-action-btn {
